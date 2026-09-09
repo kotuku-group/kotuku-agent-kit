@@ -4,14 +4,13 @@ This kit makes it easy to add AI agent support to any project that depends on Ti
 
 ## Repository installation
 
-Mount this repository at `.agents` so Codex discovers `.agents/skills` automatically:
+Mount this repository at `.agents` so Codex and Claude discover `.agents/skills` automatically:
 
 ```bash
 git submodule add https://github.com/kotuku-group/kotuku-agent-kit.git .agents
 git submodule update --init
+mkdir -p .claude && ln -s ../.agents/skills .claude/skills
 ```
-
-Keep project-specific build, test, and deployment rules in the consuming repository's `AGENTS.md`. The reusable Tiri and Kōtuku guidance belongs here.
 
 ## Included skills
 
@@ -21,9 +20,7 @@ Keep project-specific build, test, and deployment rules in the consuming reposit
 
 ## Documentation sources
 
-The skills are authored and maintained in this repository. They are not copied or generated from the Kōtuku SDK.
-
-On first use, `tiri-programming` and `kotuku-api` check for their respective documentation and download it from the repository declared by each skill.  Downloaded directories are ignored by Git and their exact source revisions are recorded in `.source.json` files within the caches.
+On first use, `tiri-programming` and `kotuku-api` download the exact commit declared by each source file. Downloaded directories are ignored by Git; `.source.json` files record their provenance, and a cache is replaced automatically when it does not match the configured repository, path, and revision. To publish a documentation update, change the relevant pinned revision, validate the kit, and increment the plugin version.
 
 Validate the bundle after changing it:
 
