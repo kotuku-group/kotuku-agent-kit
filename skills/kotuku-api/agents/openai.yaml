@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kōtuku API"
+  short_description: "Look up versioned Kōtuku API details"
+  default_prompt: "Use $kotuku-api to verify the Kōtuku APIs used by this code."

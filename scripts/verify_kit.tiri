@@ -1,0 +1,58 @@
+#!/usr/bin/env origo
+-- Check the Kōtuku Agent Kit's portable structure, sources, and optional reference caches.
+
+   import 'json'
+
+glKit = obj.find('self').workingPath .. '../'
+
+function readText(Path:str):str
+   local input
+   try
+      input = io.open(Path, 'r')
+      content = input.read('*a') ?? ''
+      input.close()
+      return content
+   except ex
+      input?.close()
+      raise f'Failed to read {Path}: {ex.message}'
+   end
+end
+
+function requirePath(Path:str)
+   if mSys.AnalysePath(Path) != ERR_Okay then raise f'Missing required path: {Path}' end
+end
+
+manifest = json.decode(readText(glKit .. '.codex-plugin/plugin.json'))
+assert(manifest.name is 'kotuku-agent-kit', 'Plugin name must be kotuku-agent-kit.')
+assert(manifest.skills is './skills/', 'Plugin skills path must be ./skills/.')
+
+for name in values(array<str> { 'tiri-programming', 'flute-testing', 'kotuku-api' }) do
+   path = glKit .. 'skills/' .. name .. '/SKILL.md'
+   skill = readText(path)
+   assert(skill.find('name: ' .. name, 0, true), f'Invalid skill name in {path}.')
+   assert(not skill.find('TODO', 0, true), f'Unfinished TODO in {path}.')
+end
+
+requirePath(glKit .. 'scripts/wiki_reference.tiri')
+requirePath(glKit .. 'scripts/wiki-source.json')
+requirePath(glKit .. 'skills/tiri-programming/references/tiri-reference-source.json')
+requirePath(glKit .. 'skills/tiri-programming/scripts/fetch_reference.tiri')
+manual_path = glKit .. 'skills/tiri-programming/references/tiri-reference/'
+if mSys.AnalysePath(manual_path) is ERR_Okay then
+   requirePath(manual_path .. 'book.adoc')
+   requirePath(manual_path .. '.source.json')
+end
+wiki_path = glKit .. 'skills/tiri-programming/references/wiki/'
+if mSys.AnalysePath(wiki_path) is ERR_Okay then
+   requirePath(wiki_path .. 'Tiri-Reference-Manual.md')
+   requirePath(wiki_path .. '.source.json')
+end
+requirePath(glKit .. 'skills/kotuku-api/references/kotuku-api-source.json')
+requirePath(glKit .. 'skills/kotuku-api/scripts/fetch_reference.tiri')
+api_path = glKit .. 'skills/kotuku-api/references/docs/xml/modules/'
+if mSys.AnalysePath(api_path) is ERR_Okay then
+   requirePath(api_path .. 'core.xml')
+   requirePath(api_path .. '.source.json')
+end
+
+print('Kōtuku Agent Kit verification passed')

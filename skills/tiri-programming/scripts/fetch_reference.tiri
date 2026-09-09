@@ -1,0 +1,125 @@
+#!/usr/bin/env origo
+-- Download the Tiri reference manual when it is not already cached with this skill.
+
+   import 'json'
+
+extern refreshWikiReference
+
+glSelf = obj.find('self')
+glSkill = glSelf.workingPath .. '../'
+
+function quoteArgument(Value:str):str
+   return '"' .. Value.replace('\\', '\\\\').replace('"', '\\"') .. '"'
+end
+
+function readText(Path:str):str
+   local input
+   try
+      input = io.open(Path, 'r')
+      content = input.read('*a') ?? ''
+      input.close()
+      return content
+   except ex
+      input?.close()
+      raise f'Failed to read {Path}: {ex.message}'
+   end
+end
+
+function writeText(Path:str, Content:str)
+   local output
+   try
+      output = io.open(Path, 'w')
+      output.write(Content)
+      output.close()
+   except ex
+      output?.close()
+      raise f'Failed to write {Path}: {ex.message}'
+   end
+end
+
+function runCommand(Location:str, Args:str):<num, str, str>
+   output = ''
+   errors = ''
+
+   function captureOutput(Task, Data)
+      output ..= Data.getString()
+   end
+
+   function captureError(Task, Data)
+      errors ..= Data.getString()
+   end
+
+   task <close> = obj.new('task', {
+      location       = Location,
+      args           = Args,
+      launchPath     = glSkill,
+      flags          = TSF_WAIT,
+      outputCallback = captureOutput,
+      errorCallback  = captureError
+   })
+   check task.acActivate()
+   return task.returnCode, output, errors
+end
+
+function requireCommand(Location:str, Args:str):str
+   status, output, errors = runCommand(Location, Args)
+   if status != 0 then
+      raise f'{Location} failed with status {status}: {(errors.trim() ?? output.trim())}'
+   end
+   return output.trim()
+end
+
+function ensureFolder(Path:str)
+   err = mSys.CreateFolder(Path, 0)
+   if (err != ERR_Okay) and (err != ERR_FileExists) then
+      raise f'Failed to create {Path}: {mSys.GetErrorMsg(err)}'
+   end
+end
+
+function main()
+   references = glSkill .. 'references/'
+   loadFile(glSkill .. '../../scripts/wiki_reference.tiri')
+   refreshWikiReference(glSkill .. '../../')
+
+   destination = references .. 'tiri-reference/'
+   if mSys.AnalysePath(destination .. 'book.adoc') is ERR_Okay then
+      print('Tiri reference manual is already available')
+      return
+   end
+
+   source = json.decode(readText(references .. 'tiri-reference-source.json'))
+   assert(source.repository??, 'The Tiri reference repository is not configured.')
+   assert(source.branch??, 'The Tiri reference branch is not configured.')
+   assert(source.path??, 'The Tiri reference path is not configured.')
+
+   staging = glSkill .. f'.reference-download-{mSys.PreciseTime()}/'
+   ensureFolder(staging)
+   defer mSys.DeleteFile(staging) end
+
+   checkout = staging .. 'repository/'
+   clone_args = 'clone --depth 1 --single-branch --branch ' .. quoteArgument(source.branch) .. ' ' ..
+      quoteArgument(source.repository) .. ' ' .. quoteArgument(checkout)
+   requireCommand('git', clone_args)
+
+   source_path = checkout .. source.path .. '/'
+   if mSys.AnalysePath(source_path .. 'book.adoc') != ERR_Okay then
+      raise f'The downloaded repository does not contain {source.path}/book.adoc.'
+   end
+
+   if mSys.AnalysePath(destination) is ERR_Okay then check mSys.DeleteFile(destination) end
+   check mSys.MoveFile(source_path, references .. 'tiri-reference')
+
+   now <close> = obj.new('time', { })
+   check now.acQuery()
+   provenance = {
+      repository = source.repository,
+      branch = source.branch,
+      revision = requireCommand('git', '-C ' .. quoteArgument(checkout) .. ' rev-parse HEAD'),
+      fetched_at = string.format('%04d-%02d-%02d', now.year, now.month, now.day)
+   }
+   writeText(destination .. '.source.json', json.encode(provenance) .. '\n')
+
+   print(f'Tiri reference manual downloaded at revision {provenance.revision}')
+end
+
+   main()

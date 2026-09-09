@@ -1,0 +1,27 @@
+{
+  "name": "kotuku-agent-kit",
+  "version": "0.1.1",
+  "description": "Versioned Tiri development skills and Kōtuku API references for coding agents.",
+  "author": {
+    "name": "Kōtuku Open Group",
+    "url": "https://github.com/kotuku-group"
+  },
+  "homepage": "https://kotuku.dev/",
+  "repository": "https://github.com/kotuku-group/kotuku-agent-kit",
+  "keywords": ["kotuku", "tiri", "programming", "testing", "api-reference"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Kotuku Agent Kit",
+    "shortDescription": "Develop Tiri projects with versioned Kōtuku guidance.",
+    "longDescription": "Provides Tiri programming and Flute testing workflows with on-demand Tiri and Kōtuku API reference documentation.",
+    "developerName": "Kōtuku Open Group",
+    "category": "Developer Tools",
+    "capabilities": ["Read", "Write"],
+    "websiteURL": "https://kotuku.dev/",
+    "defaultPrompt": [
+      "Write or review a Tiri script using the bundled language reference.",
+      "Create and run focused Flute tests for this project.",
+      "Look up a Kōtuku module, class, method, action, or field."
+    ]
+  }
+}

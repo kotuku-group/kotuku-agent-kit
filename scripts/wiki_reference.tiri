@@ -1,0 +1,109 @@
+-- Shared Kōtuku wiki downloader used by the reference-fetching skills.
+
+   import 'json'
+
+function wikiQuoteArgument(Value:str):str
+   return '"' .. Value.replace('\\', '\\\\').replace('"', '\\"') .. '"'
+end
+
+function wikiReadText(Path:str):str
+   local input
+   try
+      input = io.open(Path, 'r')
+      local content = input.read('*a') ?? ''
+      input.close()
+      return content
+   except ex
+      input?.close()
+      raise f'Failed to read {Path}: {ex.message}'
+   end
+end
+
+function wikiWriteText(Path:str, Content:str)
+   local output
+   try
+      output = io.open(Path, 'w')
+      output.write(Content)
+      output.close()
+   except ex
+      output?.close()
+      raise f'Failed to write {Path}: {ex.message}'
+   end
+end
+
+function wikiRunCommand(Location:str, Args:str, WorkingPath:str):<num, str, str>
+   output = ''
+   errors = ''
+
+   function captureWikiOutput(Task, Data)
+      output ..= Data.getString()
+   end
+
+   function captureWikiError(Task, Data)
+      errors ..= Data.getString()
+   end
+
+   task <close> = obj.new('task', {
+      location       = Location,
+      args           = Args,
+      launchPath     = WorkingPath,
+      flags          = TSF_WAIT,
+      outputCallback = captureWikiOutput,
+      errorCallback  = captureWikiError
+   })
+   check task.acActivate()
+   return task.returnCode, output, errors
+end
+
+function wikiRequireCommand(Location:str, Args:str, WorkingPath:str):str
+   status, output, errors = wikiRunCommand(Location, Args, WorkingPath)
+   if status != 0 then
+      raise f'{Location} failed with status {status}: {(errors.trim() ?? output.trim())}'
+   end
+   return output.trim()
+end
+
+function wikiEnsureFolder(Path:str)
+   err = mSys.CreateFolder(Path, 0)
+   if (err != ERR_Okay) and (err != ERR_FileExists) then
+      raise f'Failed to create {Path}: {mSys.GetErrorMsg(err)}'
+   end
+end
+
+global function refreshWikiReference(KitPath:str):str
+   source = json.decode(wikiReadText(KitPath .. 'scripts/wiki-source.json'))
+   assert(source.repository??, 'The Kōtuku wiki repository is not configured.')
+   assert(source.branch??, 'The Kōtuku wiki branch is not configured.')
+
+   staging = KitPath .. f'.wiki-download-{mSys.PreciseTime()}/'
+   wikiEnsureFolder(staging)
+   defer mSys.DeleteFile(staging) end
+
+   checkout = staging .. 'repository/'
+   clone_args = 'clone --depth 1 --single-branch --branch ' .. wikiQuoteArgument(source.branch) .. ' ' ..
+      wikiQuoteArgument(source.repository) .. ' ' .. wikiQuoteArgument(checkout)
+   wikiRequireCommand('git', clone_args, KitPath)
+
+   if mSys.AnalysePath(checkout .. 'Tiri-Reference-Manual.md') != ERR_Okay then
+      raise 'The downloaded wiki does not contain Tiri-Reference-Manual.md.'
+   end
+
+   revision = wikiRequireCommand('git', '-C ' .. wikiQuoteArgument(checkout) .. ' rev-parse HEAD', KitPath)
+   destination = KitPath .. 'skills/tiri-programming/references/wiki/'
+   if mSys.AnalysePath(destination) is ERR_Okay then check mSys.DeleteFile(destination) end
+   check mSys.DeleteFile(checkout .. '.git/')
+   check mSys.MoveFile(checkout, KitPath .. 'skills/tiri-programming/references/wiki')
+
+   now <close> = obj.new('time', { })
+   check now.acQuery()
+   provenance = {
+      repository = source.repository,
+      branch = source.branch,
+      revision = revision,
+      fetched_at = string.format('%04d-%02d-%02d', now.year, now.month, now.day)
+   }
+   wikiWriteText(destination .. '.source.json', json.encode(provenance) .. '\n')
+
+   print(f'Kōtuku wiki refreshed at revision {revision}')
+   return revision
+end
