@@ -1,0 +1,12 @@
+{
+  "name": "kotuku",
+  "plugins": [
+    {
+      "name": "kotuku-agent-kit",
+      "source": {
+        "source": "local",
+        "path": "."
+      }
+    }
+  ]
+}

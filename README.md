@@ -1,10 +1,10 @@
 # Kōtuku Agent Kit
 
-This kit makes it easy to add AI agent support to any project that depends on Tiri and the Kōtuku framework for development. The alternative method is to checkout the Kōtuku repository and then store your project(s) in a `projects` sub-folder of the main repo. Although this will work well, it adds substantial overhead that may be excessive, hence the need for this kit.
+This kit makes it easy to add AI agent support to any project that depends on Tiri and the Kōtuku framework for development. The alternative method is to checkout the Kōtuku repository and then store your project(s) in a `projects` sub-folder of the main repo. Either strategy will work well, but the latter adds substantial overhead that may be excessive, hence the need for this kit.
 
 ## Repository installation
 
-Mount this repository at `.agents` so Codex and Claude discover `.agents/skills` automatically:
+From the root of your project folder, mount this repository at `.agents` so Codex and Claude discover `.agents/skills` automatically:
 
 ```bash
 git submodule add https://github.com/kotuku-group/kotuku-agent-kit.git .agents
